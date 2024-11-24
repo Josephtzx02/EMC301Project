@@ -516,3 +516,155 @@ You can monitor multiple rooms or devices by:
 - **Voice Integration:** Use Google Assistant or Alexa to control the system via IFTTT.
 - **Web Dashboard:** Create a Blynk web interface to control and monitor from a browser.
 - **Expandable System:** Add more sensors or devices, like motion detectors or security cameras.
+
+---
+
+To set up a **Blynk web interface** for monitoring and controlling your smart home system from a browser, follow these steps:
+
+---
+
+### **1. What You Need**
+- **Blynk IoT Account**:  
+  The web interface is part of the **Blynk IoT platform**. If you’re using the new Blynk IoT version (launched in 2021), you already have access to the web dashboard.
+  
+- **Hardware**:  
+  ESP32 or ESP8266 with the previous system components (LDR, DHT11, relay, sound sensor, etc.).
+
+---
+
+### **2. Set Up Blynk IoT**
+#### **Step 1: Create an Account**
+1. Go to the [Blynk IoT website](https://blynk.io/).
+2. Sign up for a free account (or log in if you already have one).
+3. Once logged in, you'll see the **Blynk Console**, which is used to manage your projects.
+
+#### **Step 2: Create a New Template**
+1. In the **Blynk Console**, click **Templates** > **New Template**.
+2. Fill in the details:
+   - **Template Name**: Smart Home Automation
+   - **Hardware**: ESP32 or ESP8266
+   - **Connection Type**: Wi-Fi
+3. Save the template.
+
+#### **Step 3: Set Up Data Streams**
+Data streams define how data is sent between your ESP and Blynk. Create streams for your sensors and actuators:
+1. Go to the **Datastreams** tab in your template.
+2. Add **Virtual Pin Datastreams** for:
+   - Light Level (`V1`)
+   - Temperature (`V2`)
+   - Sound Detection (`V3`)
+   - Relay Control (`V4`)
+3. Configure each stream:
+   - **Name**: For example, "Light Level."
+   - **Pin Type**: Virtual.
+   - **Data Type**: Integer (for light level/sound) or Float (for temperature).
+
+---
+
+### **3. Set Up the Web Dashboard**
+#### **Step 1: Design the Dashboard**
+1. Go to the **Web Dashboard** tab in your template.
+2. Drag and drop widgets:
+   - **Label Display** for light, sound, and temperature values.
+   - **Switch** for relay control.
+   - **Chart** to show historical trends (for temperature or light level).
+3. Assign each widget to its respective virtual pin.
+
+#### **Step 2: Customize Widget Settings**
+- **Switch Widget**:  
+  Link it to the relay's virtual pin (e.g., `V4`).
+- **Label Displays**:  
+  Assign them to their corresponding data streams (`V1`, `V2`, `V3`).
+- **Chart Widget**:  
+  Configure the chart to show historical data for selected data streams.
+
+---
+
+### **4. Update the ESP Code**
+The ESP needs to send and receive data via the Blynk IoT platform. Here's an updated code example:
+
+```cpp
+#define BLYNK_TEMPLATE_ID "Your_Template_ID"
+#define BLYNK_DEVICE_NAME "Smart Home"
+#define BLYNK_AUTH_TOKEN "Your_Auth_Token"
+
+// Include necessary libraries
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+
+// Wi-Fi credentials
+char ssid[] = "Your_SSID";         // Replace with your Wi-Fi name
+char pass[] = "Your_PASSWORD";     // Replace with your Wi-Fi password
+
+// DHT Sensor setup
+#define DHTPIN 4 // GPIO4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// Pin assignments
+#define RELAY_PIN 5
+#define LDR_PIN 36
+#define SOUND_PIN 14
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(9600);
+
+  // Initialize Blynk
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  // Initialize sensors and actuators
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(SOUND_PIN, INPUT);
+  digitalWrite(RELAY_PIN, LOW); // Turn off relay initially
+
+  dht.begin();
+}
+
+void loop() {
+  Blynk.run();
+
+  // Read sensors
+  int lightValue = analogRead(LDR_PIN);
+  float temperature = dht.readTemperature();
+  int soundDetected = digitalRead(SOUND_PIN);
+
+  // Send data to Blynk
+  Blynk.virtualWrite(V1, lightValue);
+  Blynk.virtualWrite(V2, temperature);
+  Blynk.virtualWrite(V3, soundDetected);
+}
+
+// Control relay via the web interface
+BLYNK_WRITE(V4) {
+  int relayState = param.asInt();
+  digitalWrite(RELAY_PIN, relayState);
+}
+```
+
+---
+
+### **5. Testing the Web Dashboard**
+1. Flash the updated code to your ESP32/ESP8266.
+2. Log in to your Blynk IoT console.
+3. Open the **Web Dashboard**.
+4. Test the widgets:
+   - Use the **Switch Widget** to toggle the relay.
+   - Monitor real-time sensor data updates in the **Label Displays**.
+   - View historical data in the **Chart Widget**.
+
+---
+
+### **6. Adding Mobile App Support**
+Once the web interface is set up, the Blynk app can sync automatically:
+1. Open the Blynk app on your smartphone.
+2. Log in using the same account as the web console.
+3. Your project will appear in the app, ready to use with the same widgets.
+
+---
+
+### **7. Next Steps**
+- Add **event notifications** to trigger alerts for critical conditions.
+- Configure **roles and permissions** to share the dashboard with family members.
+- Set up **automation rules** (e.g., automatically turning on lights at night).
