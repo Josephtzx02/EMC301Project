@@ -90,7 +90,89 @@ Smart home automation system using **light**, **sound**, and **temperature senso
 
 ---
 
-### **2. Circuit Diagram Explanation**
+### **2. Code Examples**
+
+#### **Setup Code**
+Here’s a combined Arduino code to manage all the sensors and actuators.
+
+```cpp
+#include <DHT.h>
+
+// Pin Assignments
+#define LDR_PIN A0  // Light sensor
+#define SOUND_PIN 2 // Sound sensor digital pin
+#define DHT_PIN 3   // Temperature sensor
+#define RELAY_PIN 4 // Relay module
+#define LED_PIN 5   // LED indicator
+#define BUZZER_PIN 6 // Buzzer
+
+// DHT Sensor Type (DHT11 or DHT22)
+#define DHT_TYPE DHT11
+DHT dht(DHT_PIN, DHT_TYPE);
+
+// Thresholds
+int lightThreshold = 500; // Adjust based on ambient light levels
+int soundThreshold = 100; // For sound sensor triggering
+float tempThreshold = 30.0; // Degrees Celsius
+
+void setup() {
+  // Initialize components
+  pinMode(SOUND_PIN, INPUT);
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  digitalWrite(RELAY_PIN, LOW); // Initially turn off the relay
+  digitalWrite(LED_PIN, LOW);   // Turn off LED
+  digitalWrite(BUZZER_PIN, LOW); // Turn off buzzer
+
+  // Start communication
+  Serial.begin(9600);
+  dht.begin();
+
+  Serial.println("Smart Home System Initialized!");
+}
+
+void loop() {
+  // Read sensors
+  int lightValue = analogRead(LDR_PIN);
+  int soundValue = digitalRead(SOUND_PIN);
+  float temperature = dht.readTemperature();
+
+  // Light control based on LDR
+  if (lightValue < lightThreshold) {
+    digitalWrite(RELAY_PIN, HIGH); // Turn on the light
+    digitalWrite(LED_PIN, HIGH);   // LED indicator ON
+  } else {
+    digitalWrite(RELAY_PIN, LOW); // Turn off the light
+    digitalWrite(LED_PIN, LOW);  // LED indicator OFF
+  }
+
+  // Sound detection for buzzer
+  if (soundValue == HIGH) {
+    digitalWrite(BUZZER_PIN, HIGH); // Sound alarm
+    delay(500); // Keep the buzzer on for 500ms
+    digitalWrite(BUZZER_PIN, LOW);
+  }
+
+  // Temperature control
+  if (temperature > tempThreshold) {
+    Serial.println("Temperature exceeded threshold!");
+    // You can add fan control here using a relay
+  }
+
+  // Log data to serial monitor
+  Serial.print("Light: "); Serial.print(lightValue);
+  Serial.print(", Sound: "); Serial.print(soundValue);
+  Serial.print(", Temp: "); Serial.println(temperature);
+
+  delay(1000); // Wait for 1 second before repeating
+}
+```
+
+---
+
+### **3. Circuit Diagram Explanation**
 #### **Components & Connections:**
 1. **Light Sensor (LDR):**
    - Connect one leg of the LDR to **5V** and the other to an analog pin (e.g., A0) with a **10kΩ resistor** in series to GND.
@@ -118,7 +200,7 @@ Smart home automation system using **light**, **sound**, and **temperature senso
 
 ---
 
-### **3. Functionality**
+### **4. Functionality**
 - **Light Control:**
   - The relay turns on when the light level drops below the threshold.
   - The LED indicates when the relay is active.
@@ -133,7 +215,7 @@ Smart home automation system using **light**, **sound**, and **temperature senso
 
 ---
 
-To integrate **Wi-Fi control and mobile app functionality** into the smart home system using **Blynk**,
+To integrate **Wi-Fi control and mobile app functionality** into the smart home system using **Blynk**, follow these steps:
 
 ---
 
@@ -188,6 +270,80 @@ Example:
 
 ---
 
+### **3. Code Example for Blynk Integration**
+
+Below is an example sketch:
+
+```cpp
+#define BLYNK_TEMPLATE_ID "Your_Template_ID"
+#define BLYNK_DEVICE_NAME "Smart Home"
+#define BLYNK_AUTH_TOKEN "Your_Auth_Token"
+
+// Include necessary libraries
+#include <WiFi.h> // For ESP32/ESP8266
+#include <BlynkSimpleEsp32.h> // Use <BlynkSimpleEsp8266.h> for ESP8266
+#include <DHT.h>
+
+// Wi-Fi credentials
+char ssid[] = "Your_SSID";         // Replace with your Wi-Fi name
+char pass[] = "Your_PASSWORD";     // Replace with your Wi-Fi password
+
+// DHT Sensor setup
+#define DHTPIN 4 // GPIO4 (D2 on ESP8266)
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// Relay and other pins
+#define RELAY_PIN 5   // GPIO5 (D1)
+#define BUZZER_PIN 12 // GPIO12 (D6)
+#define SOUND_PIN 14  // GPIO14 (D5)
+#define LDR_PIN 36    // GPIO36 (A0 for ESP32)
+
+// Blynk virtual pins
+#define V_LIGHT V1
+#define V_TEMP V2
+#define V_SOUND V3
+
+void setup() {
+  // Start serial monitor
+  Serial.begin(9600);
+
+  // Initialize Blynk
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  // Initialize sensors and actuators
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(SOUND_PIN, INPUT);
+  digitalWrite(RELAY_PIN, LOW); // Turn off relay initially
+
+  dht.begin();
+}
+
+void loop() {
+  Blynk.run();
+
+  // Read sensor values
+  int lightValue = analogRead(LDR_PIN);
+  float temperature = dht.readTemperature();
+  int soundDetected = digitalRead(SOUND_PIN);
+
+  // Send data to Blynk app
+  Blynk.virtualWrite(V_LIGHT, lightValue);
+  Blynk.virtualWrite(V_TEMP, temperature);
+  Blynk.virtualWrite(V_SOUND, soundDetected);
+
+  // Auto-control example
+  if (lightValue < 500) { // Low light
+    digitalWrite(RELAY_PIN, HIGH); // Turn on relay
+  } else {
+    digitalWrite(RELAY_PIN, LOW); // Turn off relay
+  }
+}
+```
+
+---
+
 ### **4. App Functionality**
 - **Button Widget (V1):**  
   Toggle relay for controlling lights or fans.
@@ -206,7 +362,7 @@ Example:
 3. Open the Blynk app and test the widgets:
    - Tap the button to toggle the relay.
    - Observe real-time sensor values on the app.
-
+  
 ---
 
 Here’s how to set up advanced features, like **push notifications** and **customizing your Blynk app interface**, for a more powerful smart home system:
